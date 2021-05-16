@@ -40,7 +40,7 @@ int numberOfNetworks=0;
 String sTryThisSSID, sTryThisPW;
 bool flag_TryThisWiFi = false;
 
-bool ConnectToWiFi(const char *sSSID=nullptr, const char *sPW=nullptr, bool updateSocket=false);
+bool ConnectToWiFi(const char *pSSID=nullptr, const char *pPW=nullptr/*, bool updateSocket=false*/);
 void ScanNetworks(void);
 void StartSoftAP(const char * SSIDName, char * PW=nullptr);
 int CompareNetworksPower (const void * a, const void * b);
@@ -49,61 +49,70 @@ String populateWebVars_WiFiList(const String& var);
 
 
 
-bool ConnectToWiFi(const char *sSSID, const char *sPW, bool updateSocket) {
+bool ConnectToWiFi(const char *pSSID, const char *pPW/*, bool updateSocket*/) {
   long Waiting =0;
   long WaitStart=millis();
   long LastCountownSent=0;
+  String sSSID, sPW;
 
-  if(!sSSID){
+
+  if(!pSSID || strlen(pSSID)<=0){
     JBINIFile INIFile("/config.ini");
     sSSID=INIFile.GetINIFileKey("SSID").c_str();
     sPW=INIFile.GetINIFileKey("PW").c_str();
     INIFile.Close();
+  }else{
+    sSSID=pSSID;
+    sPW=pPW;
   }
+
   
-  if(updateSocket){
+  //return false;
+  /*if(updateSocket){
     MySocketPlugIn.textAll(CreateJSONString("WIFI_NAME",sSSID,JSON_DATA_POS_SINGLE,JSON_DATATYPE_STRING));
-  }
-  if(strlen(sSSID)>0){
-    Serial lln "Try to log to:" sp sSSID sp sPW;
-    WiFi.begin(sSSID,sPW);
-  }
-    
-  else{
-    Serial lln "Trying to log to empty sSSID";
+  }*/
+
+  if(sSSID.length()>=0){
+    Serial lln "ConnectToWiFi() connecting to: " sp sSSID sp sPW;
+    WiFi.begin(sSSID.c_str(),sPW.c_str());
+  } else{
+    Serial lln "Error: Trying to log to empty sSSID";
     return false;
   }
     
   
-  while (WiFi.status() != WL_CONNECTED) {
+  // Tant que non connecté ( et que le timeou n'est pas dépassé)
+  Waiting=millis();
+  while (WiFi.status() != WL_CONNECTED && Waiting-WaitStart<WiFiLogInTimeOut) {
     static int laststatus=0;
-
+    
+    // Check si le status a changé
     if(laststatus!=WiFi.status()){ laststatus=WiFi.status(); Serial sp "new status=" << laststatus;}
-    Waiting=millis(); if(Waiting-WaitStart>WiFiLogInTimeOut){ 
-      return false;
+    
+    /*     
+    // Check si le USER a CANCELé
+    if(updateSocket && !flag_TryThisWiFi){
+      return false; // The user canceled the trial (see main.cpp: TryThisWiFi_html_wsHandler())
+    }*/
+
+    // Donner signe de vie environ 1 fois par seconde au client et sur le port serie.   
+    if((long)((Waiting-WaitStart)/500) != LastCountownSent){
+      LastCountownSent=(long)((Waiting-WaitStart)/500);
+      Serial.print(".");
+      /*
+      if(updateSocket){
+        MySocketPlugIn.textAll(CreateJSONString("TIME_LEFT",String(WiFiLogInTimeOut-LastCountownSent).c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_NUMBER));
+      }*/
     }
-
-    delay(500);
-
-    if(updateSocket){
-      if(!flag_TryThisWiFi) {
-        return false; // The user canceled the trial (see main.cpp: TryThisWiFi_html_wsHandler())
-      }
-      if((long)((Waiting-WaitStart)/1000) != LastCountownSent){
-        LastCountownSent=(long)((Waiting-WaitStart)/1000);
-        MySocketPlugIn.textAll(
-                  CreateJSONString("TIME_LEFT",
-                  String(WiFiLogInTimeOut-LastCountownSent).c_str(),
-                  JSON_DATA_POS_SINGLE,
-                  JSON_DATATYPE_NUMBER)
-                  );
-      }
-    }
-
-    Serial.print(".");
+    Waiting=millis();
   }
-  Serial lln  "Success: " sp WiFi.localIP().toString().c_str() sp "on " sp WiFi.SSID();
-  return true;
+
+  if(WiFi.status() == WL_CONNECTED){
+    Serial lln  "Success: " sp WiFi.localIP().toString().c_str() sp "on " sp WiFi.SSID();
+    return true;
+  }
+  Serial lln "ConnectToWiFi() = Failed to log to: " sp sSSID sp sPW;
+  return false;
 }
 
 
