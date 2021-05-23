@@ -16,15 +16,14 @@
 
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include "C:\Users\jbore\Documents\Electronique\Projets\Vieux Debris\Vieux Debris Async\.pio\libdeps\esp32dev\WebSockets\src\WebSocketsServer.h"
 #include "JBUtils.h"
 #include "JBjson.h"
-
+// V0.1
 // Create AsyncWebServer object on port 80
 AsyncWebServer MyAsyncWebServer(80);
-AsyncWebSocket MySocketPlugIn("/ws");       // je crois que le "/ws" sert au AsyncWebServer pour identifier le socket à utiliser lorsqu'il reçoit une requete d'un fichier.js (javascript) 
-                                            // PAr exemple, dans le index.js, la première ligne servirait à établir ce lien: 
-                                            // var gateway = `ws://${window.location.hostname}/ws`; Cela signifie peut-être qu'il pourrait y avoir
-                                            // Plusieurs AsyncWebServer, genre 1 par page?... 
+// Create WebSocket on another port
+WebSocketsServer MySocket(81);
 
 #define WiFiLogInTimeOut 10000
 
@@ -38,7 +37,7 @@ NetworkItem *NetList=nullptr;
 int numberOfNetworks=0;
 
 String sTryThisSSID, sTryThisPW;
-bool flag_TryThisWiFi = false;
+bool flag_UserCanceled = false;  
 
 bool ConnectToWiFi(const char *pSSID=nullptr, const char *pPW=nullptr, bool updateSocket=false);
 void ScanNetworks(void);
@@ -55,7 +54,6 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
   long LastCountownSent=0;
   String sSSID, sPW;
 
-
   if(!pSSID || strlen(pSSID)<=0){
     JBINIFile INIFile("/config.ini");
     sSSID=INIFile.GetINIFileKey("SSID").c_str();
@@ -66,11 +64,17 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     sPW=pPW;
   }
 
-  
-  
   if(updateSocket){
+    // TO DO optimise JSONs, remove debug
     Serial lln "Socket 1";
-    MySocketPlugIn.textAll(CreateJSONString("WIFI_NAME",sSSID.c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_STRING));
+    String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_STRING);
+    MySocket.broadcastTXT(s);
+    Serial sp s ln;
+    s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut-LastCountownSent)/1000).c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_NUMBER);
+    MySocket.broadcastTXT(s);
+    MySocket.loop();
+    Serial sp s ln;
+    yield();
   }
 
   if(sSSID.length()>=0){
@@ -79,7 +83,7 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     Serial lln "Post wifi.begin()";
   } else{
     Serial lln "Error: Trying to log to empty sSSID";
-    flag_TryThisWiFi=false;
+    flag_UserCanceled=false;
     return false;
   }
     
@@ -94,28 +98,40 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     
          
     // Check si le USER a CANCELé
-    if(updateSocket && !flag_TryThisWiFi){
-      Serial lln "Socket 2";
-      return false; // The user canceled the trial (see main.cpp: TryThisWiFi_html_wsHandler())
+    if(updateSocket) {
+      MySocket.loop();
+
+      if(flag_UserCanceled){  // The user canceled the trial (see main.cpp: TryThisWiFi_html_wsHandler())
+        Serial lln "Socket 2";
+        return false; 
+      }
     }
 
-    // Donner signe de vie environ 1 fois par seconde au client et sur le port serie.   
+    yield(); // céder le processeur
+
+    // Donner signe de vie environ 2 fois par seconde au client et sur le port serie.   
     if((long)((Waiting-WaitStart)/500) != LastCountownSent){
       LastCountownSent=(long)((Waiting-WaitStart)/500);
       Serial.print(".");
       
       if(updateSocket){
         Serial lln "Socket 3";
-        MySocketPlugIn.textAll(CreateJSONString("TIME_LEFT",String(WiFiLogInTimeOut-LastCountownSent).c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_NUMBER));
+        String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut-LastCountownSent)/1000).c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_NUMBER);
+        MySocket.broadcastTXT(s);
+        
       }
     }
     Waiting=millis();
   }
 
-  flag_TryThisWiFi=false;
+  flag_UserCanceled=false;
   
   if(WiFi.status() == WL_CONNECTED){
+    String ss = "Success: " + WiFi.localIP().toString() + " on " + sSSID;
     Serial lln  "Success: " sp WiFi.localIP().toString().c_str() sp "on " sp sSSID;
+    
+    String s=CreateJSONString("WIFI_NAME",ss.c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_STRING);
+    MySocket.broadcastTXT(s);
     return true;
   }
   Serial lln "ConnectToWiFi() = Failed to log to: " sp sSSID sp sPW;

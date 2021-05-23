@@ -14,7 +14,7 @@
 #define JSON_DATA_POS_LAST      2
 #define JSON_DATA_POS_SINGLE    3
 
-/* GetJSONData(const char *pKey,  char * pData)
+/* GetJSONData(const char *pKey,  char * InThis_JSON_Data)
 
 JSON data format: 
 https://www.w3schools.com/js/js_json_datatypes.asp
@@ -49,8 +49,8 @@ exemple d'utilisation:
   Serial lln myTmps;
 
 **************************************************************/
-String GetJSONData(const char *pKey, const char * pData, uint8_t dataType=JSON_DATATYPE_STRING){
-    String s=pData;
+String GetJSONData(const char *pKey, const char * InThis_JSON_Data, uint8_t dataType=JSON_DATATYPE_STRING){
+    String s=InThis_JSON_Data;
     String r=String();
     int p1=0; int p2=0;
 
