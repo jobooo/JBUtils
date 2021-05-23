@@ -28,7 +28,7 @@ WebSocketsServer MySocket(81);
 #define WiFiLogInTimeOut 10000
 
 typedef struct {
-  String NetName; 
+  String NetName;  
   int dbPower;
 } NetworkItem;
 
