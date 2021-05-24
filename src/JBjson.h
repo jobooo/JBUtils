@@ -5,14 +5,19 @@
 #include <Streaming.h>
 
 
-#define JSON_DATATYPE_STRING 0
-#define JSON_DATATYPE_NUMBER 1
-#define JSON_DATATYPE_BOOL 2
+typedef enum  {
+    jst_STRING,
+    jst_NUMBER,
+    jst_BOOL
+}JSON_DATATYPE;
 
-#define JSON_DATA_POS_FIRST     0
-#define JSON_DATA_POS_MIDDLE    1
-#define JSON_DATA_POS_LAST      2
-#define JSON_DATA_POS_SINGLE    3
+typedef enum  {
+    jsp_FIRST,
+    jsp_MIDDLE,
+    jsp_LAST,
+    jsp_SINGLE
+}JSON_DATA_POSITION;
+ 
 
 /* GetJSONData(const char *pKey,  char * InThis_JSON_Data)
 
@@ -36,27 +41,27 @@ Exemple (ici avec des newline pour faire plus clair):
 exemple d'utilisation: 
 
   String myjs = String();
-  myjs=CreateJSONString("Cle","Value",JSON_DATA_POS_SINGLE);
+  myjs=CreateJSONString("Cle","Value",jsp_SINGLE);
   Serial lln "JSON A:" sp myjs;
-  myjs=CreateJSONString("Key1","StringKEy",JSON_DATA_POS_FIRST, JSON_DATATYPE_STRING);
-  myjs = myjs + CreateJSONString("Key 2","666",JSON_DATA_POS_MIDDLE,JSON_DATATYPE_NUMBER);
-  myjs = myjs + CreateJSONString("Key 3","true",JSON_DATA_POS_LAST,JSON_DATATYPE_BOOL);
+  myjs=CreateJSONString("Key1","StringKEy",jsp_FIRST, jst_STRING);
+  myjs = myjs + CreateJSONString("Key 2","666",jsp_MIDDLE,jst_NUMBER);
+  myjs = myjs + CreateJSONString("Key 3","true",jsp_LAST,jst_BOOL);
   Serial lln "JSON B:" sp myjs;
   String myTmps=String();
-  myTmps= "Key1=" + GetJSONData("Key1",myjs.c_str(),JSON_DATATYPE_STRING) + "\n\r";
-  myTmps = myTmps + "Key 2=" + GetJSONData("Key 2",myjs.c_str(),JSON_DATATYPE_NUMBER) + "\n\r";
-  myTmps = myTmps + "Key 3=" + GetJSONData("Key 3",myjs.c_str(),JSON_DATATYPE_BOOL) + "\n\r";
+  myTmps= "Key1=" + GetJSONData("Key1",myjs.c_str(),jst_STRING) + "\n\r";
+  myTmps = myTmps + "Key 2=" + GetJSONData("Key 2",myjs.c_str(),jst_NUMBER) + "\n\r";
+  myTmps = myTmps + "Key 3=" + GetJSONData("Key 3",myjs.c_str(),jst_BOOL) + "\n\r";
   Serial lln myTmps;
 
 **************************************************************/
-String GetJSONData(const char *pKey, const char * InThis_JSON_Data, uint8_t dataType=JSON_DATATYPE_STRING){
+String GetJSONData(const char *pKey, const char * InThis_JSON_Data, JSON_DATATYPE dataType=jst_STRING){
     String s=InThis_JSON_Data;
     String r=String();
     int p1=0; int p2=0;
 
     p1=s.indexOf(pKey);         if(p1==-1) return r;
     p2=s.indexOf(":",p1);       if(p2==-1) return r;
-    if(dataType==JSON_DATATYPE_STRING){
+    if(dataType==jst_STRING){
         p1=s.indexOf("\"",p2); if(p1==-1) return r; p1++;
         p2=s.indexOf("\"",p1); if(p2==-1) return r;
         r=s.substring(p1,p2);
@@ -76,13 +81,20 @@ String GetJSONData(const char *pKey, const char * InThis_JSON_Data, uint8_t data
     return r;
 }
 
-
-String CreateJSONString(const char *pKeyName, const char *pValue, int dataPosition=JSON_DATA_POS_MIDDLE, int dataType=JSON_DATATYPE_STRING){
+// Create a JSON string with Key, Value. 
+// dataPosition is used to determine if {} and "," are needed, 
+// dataType determine if "" are needed
+String CreateJSONString(const char *pKeyName, 
+                        const char *pValue, 
+                        JSON_DATA_POSITION dataPosition=jsp_MIDDLE, 
+                        JSON_DATATYPE dataType=jst_STRING   
+                        )
+{
     String r=String();
     switch(dataPosition){
-        case JSON_DATA_POS_FIRST:
+        case jsp_FIRST:
             r = r + "{\"" + pKeyName + "\":";
-            if(dataType==JSON_DATATYPE_STRING){
+            if(dataType==jst_STRING){
                 r= r+ "\"" + pValue + "\"";
             } else {
                 r = r + pValue;
@@ -90,9 +102,9 @@ String CreateJSONString(const char *pKeyName, const char *pValue, int dataPositi
             r = r + ",";
             break;
 
-        case JSON_DATA_POS_LAST:
+        case jsp_LAST:
             r = r + "\"" + pKeyName + "\":";
-            if(dataType==JSON_DATATYPE_STRING){
+            if(dataType==jst_STRING){
                 r= r + "\"" + pValue + "\"";
             } else {
                 r= r + pValue;
@@ -100,9 +112,9 @@ String CreateJSONString(const char *pKeyName, const char *pValue, int dataPositi
             r = r + "}";
             break; 
 
-        case JSON_DATA_POS_MIDDLE:
+        case jsp_MIDDLE:
             r = r + "\"" + pKeyName + "\":";
-            if(dataType==JSON_DATATYPE_STRING){
+            if(dataType==jst_STRING){
                 r= r+ "\"" + pValue + "\"";
             } else {
                 r = r + pValue;
@@ -110,9 +122,9 @@ String CreateJSONString(const char *pKeyName, const char *pValue, int dataPositi
             r = r + ",";
             break;
         
-        case JSON_DATA_POS_SINGLE:
+        case jsp_SINGLE:
             r = r + "{\"" + pKeyName + "\":";
-            if(dataType==JSON_DATATYPE_STRING){
+            if(dataType==jst_STRING){
                 r = r + "\"" + pValue + "\"";
             } else {
                 r = r + pValue;

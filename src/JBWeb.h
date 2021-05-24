@@ -18,6 +18,7 @@
 #include <ESPAsyncWebServer.h>
 #include "C:\Users\jbore\Documents\Electronique\Projets\Vieux Debris\Vieux Debris Async\.pio\libdeps\esp32dev\WebSockets\src\WebSocketsServer.h"
 #include "JBUtils.h"
+#include "JBESPFiles.h"
 #include "JBjson.h"
 // V0.1
 // Create AsyncWebServer object on port 80
@@ -25,10 +26,10 @@ AsyncWebServer MyAsyncWebServer(80);
 // Create WebSocket on another port
 WebSocketsServer MySocket(81);
 
-#define WiFiLogInTimeOut 10000
+#define WiFiLogInTimeOut 20000
 
 typedef struct {
-  String NetName;  
+  String NetName;     
   int dbPower;
 } NetworkItem;
 
@@ -45,7 +46,6 @@ void StartSoftAP(const char * SSIDName, char * PW=nullptr);
 int CompareNetworksPower (const void * a, const void * b);
 
 String populateWebVars_WiFiList(const String&  var);
-
 
 
 bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
@@ -65,12 +65,12 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
   }
 
   if(updateSocket){
-    // TO DO optimise JSONs, remove debug
+    
     Serial lln "Socket 1";
-    String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_STRING);
+    String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),jsp_SINGLE,jst_STRING);
     MySocket.broadcastTXT(s);
     Serial sp s ln;
-    s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut-LastCountownSent)/1000).c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_NUMBER);
+    s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_SINGLE,jst_NUMBER);
     MySocket.broadcastTXT(s);
     MySocket.loop();
     Serial sp s ln;
@@ -79,6 +79,11 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
 
   if(sSSID.length()>=0){
     Serial lln "ConnectToWiFi() connecting to: " sp sSSID sp sPW;
+    WiFi.disconnect();
+    while(WiFi.status()==WL_CONNECTED){// on attend que le status change sinon ça passe trop vite vers le "success!"
+      yield(); 
+    } 
+      
     WiFi.begin(sSSID.c_str(),sPW.c_str());
     Serial lln "Post wifi.begin()";
   } else{
@@ -110,14 +115,17 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     yield(); // céder le processeur
 
     // Donner signe de vie environ 2 fois par seconde au client et sur le port serie.   
-    if((long)((Waiting-WaitStart)/500) != LastCountownSent){
-      LastCountownSent=(long)((Waiting-WaitStart)/500);
+    if((long)((Waiting-WaitStart)/1000) != LastCountownSent){
+      LastCountownSent=(long)((Waiting-WaitStart)/1000);
       Serial.print(".");
       
       if(updateSocket){
-        Serial lln "Socket 3";
-        String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut-LastCountownSent)/1000).c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_NUMBER);
+        
+        String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_SINGLE,jst_NUMBER);
         MySocket.broadcastTXT(s);
+        MySocket.loop();
+        Serial lln "Socket 3:" sp LastCountownSent sp s;
+        yield();
         
       }
     }
@@ -129,11 +137,16 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
   if(WiFi.status() == WL_CONNECTED){
     String ss = "Success: " + WiFi.localIP().toString() + " on " + sSSID;
     Serial lln  "Success: " sp WiFi.localIP().toString().c_str() sp "on " sp sSSID;
-    
-    String s=CreateJSONString("WIFI_NAME",ss.c_str(),JSON_DATA_POS_SINGLE,JSON_DATATYPE_STRING);
+
+    String s=CreateJSONString("WIFI_NAME",ss.c_str(),jsp_FIRST,jst_STRING);
+    s+=CreateJSONString("OPERATION","Success",jsp_LAST,jst_STRING);
     MySocket.broadcastTXT(s);
+
     return true;
   }
+  String s=CreateJSONString("OPERATION","Failed",jsp_SINGLE,jst_STRING);
+  MySocket.broadcastTXT(s);
+
   Serial lln "ConnectToWiFi() = Failed to log to: " sp sSSID sp sPW;
   return false;
 }
