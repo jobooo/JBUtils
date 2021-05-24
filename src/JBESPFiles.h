@@ -7,12 +7,13 @@
 #include "JBUtils.h"
 #include <FS.h>
 #include "SPIFFS.h"
+#ifndef JBESPFiles_VERSION
 
 #define JBESPFiles_VERSION "2021-04-01"
 
 String ReadLineToString(File f);
 String ReadFileToString(String sFile2Read);
-uint WriteStringToFile(String sFileName, String sContent, bool bAppend=false);
+uint WriteStringToFile(String sFileName, String sContent, bool bAppend);
 int ReadFileUntil(File f, char * dest, char terminator);
 
 /* Starts the SPIFFS file system. Should be called once at the begining of runtime.*/
@@ -37,7 +38,7 @@ String ReadFileToString(String sFile2Read){
   return s;
 }
 
-uint WriteStringToFile(String sFileName, String sContent, bool bAppend){
+uint WriteStringToFile(String sFileName, String sContent, bool bAppend=false){
   File f = SPIFFS.open(sFileName, bAppend ? "w+":"w");
   if(!f){Serial << "ReadFileToString:" << sFileName sp " open file" ln; return 0;}
   
@@ -193,3 +194,4 @@ bool  JBINIFile::SetINIFileKey(String sKey, String sValue){
 
   return true;  
 }
+#endif
