@@ -13,10 +13,9 @@
 
 #include "SPIFFS.h"
 #include <WiFi.h>
-
+#include <WebSocketsServer.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include "C:\Users\jbore\Documents\Electronique\Projets\Vieux Debris\Vieux Debris Async\.pio\libdeps\esp32dev\WebSockets\src\WebSocketsServer.h"
 #include "JBUtils.h"
 #include "JBESPFiles.h"
 #include "JBjson.h"
