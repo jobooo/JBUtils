@@ -25,34 +25,49 @@ AsyncWebServer MyAsyncWebServer(80);
 // Create WebSocket on another port
 WebSocketsServer MySocket(81);
 
-#define WiFiLogInTimeOut 20000
+#define WiFiLogInTimeOut 20000  // when user gives new WiFi SSID & PW, how long do we try to log before failling. (in milliseconds)
 
+/**********************************************
+ Stuff Used show avail networks 
+ and to sort them by their strenght
+***********************************************/
 typedef struct {
   String NetName;     
   int dbPower;
 } NetworkItem;
-
-NetworkItem *NetList=nullptr;
-
+// a pointer to an array of network Items, 
+NetworkItem *NetList=nullptr; 
 int numberOfNetworks=0;
-
-String sTryThisSSID, sTryThisPW;
-bool flag_UserCanceled = false;  
-
-bool ConnectToWiFi(const char *pSSID=nullptr, const char *pPW=nullptr, bool updateSocket=false);
 void ScanNetworks(void);
-void StartSoftAP(const char * SSIDName, char * PW=nullptr);
 int CompareNetworksPower (const void * a, const void * b);
-
 String populateWebVars_WiFiList(const String&  var);
+/*******************************************************/
+
+/******************************************************
+ * WiFi connection stuff
+ * ****************************************************/
+String sTryThisSSID, sTryThisPW;
+void StartSoftAP(const char * SSIDName, char * PW=nullptr); // Used to start ESP32's local private WiFi provider
+bool flag_UserCanceled = false;  // If user cancels while tryin to log to a wifi router 
+bool ConnectToWiFi(const char *pSSID=nullptr, const char *pPW=nullptr, bool updateSocket=false);
 
 
+/****************************************
+ * Connect to WiFi. 
+ * All parameters are optional. 
+ * Will Connect to SSID and PW found in CONFIG.INI if params are empty
+ * updateSocket is false by default. If true, will bradcast to WebSocketClients
+ * about SSID and time left before fail
+ * *****************************************/
 bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
+  // Timers to wait for conection 
   long Waiting =0;
   long WaitStart=millis();
   long LastCountownSent=0;
+  
   String sSSID, sPW;
 
+  // Will use data from CONFIG.ini if pSSID is empty
   if(!pSSID || strlen(pSSID)<=0){
     JBINIFile INIFile("/config.ini");
     sSSID=INIFile.GetINIFileKey("SSID").c_str();
@@ -62,37 +77,35 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     sSSID=pSSID;
     sPW=pPW;
   }
-
+  
+  // if we must update WebSocket clients
   if(updateSocket){
-    
-    Serial lln "Socket 1";
-    String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),jsp_SINGLE,jst_STRING);
-    MySocket.broadcastTXT(s);
-    Serial sp s ln;
-    s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_SINGLE,jst_NUMBER);
+    // Populate JSON string with ssid & time left
+    String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),jsp_FIRST,jst_STRING);
+    s+=CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_LAST,jst_NUMBER);
     MySocket.broadcastTXT(s);
     MySocket.loop();
-    Serial sp s ln;
     yield();
   }
 
   if(sSSID.length()>=0){
     Serial lln "ConnectToWiFi() connecting to: " sp sSSID sp sPW;
-    WiFi.disconnect();
-    while(WiFi.status()==WL_CONNECTED){// on attend que le status change sinon ça passe trop vite vers le "success!"
+    WiFi.disconnect();  // disconect first
+    while(WiFi.status()==WL_CONNECTED){   // on attend que le status change sinon ça passe trop vite vers le "success!"
       yield(); 
     } 
-      
+
     WiFi.begin(sSSID.c_str(),sPW.c_str());
     Serial lln "Post wifi.begin()";
-  } else{
+
+  } else {
     Serial lln "Error: Trying to log to empty sSSID";
     flag_UserCanceled=false;
     return false;
   }
     
   
-  // Tant que non connecté ( et que le timeou n'est pas dépassé)
+  // Tant que non connecté ( et que le timeout n'est pas dépassé)
   Waiting=millis();
   while (WiFi.status() != WL_CONNECTED && Waiting-WaitStart<WiFiLogInTimeOut) {
     static int laststatus=0;
@@ -100,9 +113,7 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     // Check si le status a changé
     if(laststatus!=WiFi.status()){ laststatus=WiFi.status(); Serial sp "new status=" << laststatus;}
     
-         
-    // Check si le USER a CANCELé
-    if(updateSocket) {
+    if(updateSocket) {  // if we must update WebSocket clients
       MySocket.loop();
 
       if(flag_UserCanceled){  // The user canceled the trial (see main.cpp: TryThisWiFi_html_wsHandler())
@@ -113,17 +124,15 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
 
     yield(); // céder le processeur
 
-    // Donner signe de vie environ 2 fois par seconde au client et sur le port serie.   
+    // Donner signe de vie environ 1 fois par seconde au client et sur le port serie.   
     if((long)((Waiting-WaitStart)/1000) != LastCountownSent){
       LastCountownSent=(long)((Waiting-WaitStart)/1000);
       Serial.print(".");
       
-      if(updateSocket){
-        
+      if(updateSocket){ // if we must update WebSocket clients
         String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_SINGLE,jst_NUMBER);
         MySocket.broadcastTXT(s);
         MySocket.loop();
-        Serial lln "Socket 3:" sp LastCountownSent sp s;
         yield();
         
       }
@@ -131,34 +140,33 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     Waiting=millis();
   }
 
-  flag_UserCanceled=false;
+  flag_UserCanceled=false; // reset for future use
   
+  // Succes!! broadcast the good news
   if(WiFi.status() == WL_CONNECTED){
-    String ss = "Success: " + WiFi.localIP().toString() + " on " + sSSID;
-    Serial lln  "Success: " sp WiFi.localIP().toString().c_str() sp "on " sp sSSID;
-
-    String s=CreateJSONString("WIFI_NAME",ss.c_str(),jsp_FIRST,jst_STRING);
+    String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),jsp_FIRST,jst_STRING);
     s+=CreateJSONString("OPERATION","Success",jsp_LAST,jst_STRING);
     MySocket.broadcastTXT(s);
-
+    Serial lln s;
     return true;
   }
+  // Failed: broadcast the good news
   String s=CreateJSONString("OPERATION","Failed",jsp_SINGLE,jst_STRING);
   MySocket.broadcastTXT(s);
-
   Serial lln "ConnectToWiFi() = Failed to log to: " sp sSSID sp sPW;
   return false;
 }
 
-
+// Start Software Access Point, ESP32's own Wifi Provider
 void StartSoftAP(const char * SSIDName, char * PW){
   WiFi.softAPConfig(IPAddress(10,10,10,10),IPAddress(10,10,10,1),IPAddress(255,255,255,0));
   WiFi.softAP(SSIDName,PW);
   Serial lln "IP * address: " sp  WiFi.softAPIP();
 }
 
+// qSort function to sort avail neworks by power, descending
 int CompareNetworksPower (const void * a, const void * b) {
-   NetworkItem *NetA = (NetworkItem *)a;
+  NetworkItem *NetA = (NetworkItem *)a;
   NetworkItem *NetB = (NetworkItem *)b;
 
   if (NetA->dbPower > NetB->dbPower)
@@ -194,6 +202,7 @@ void ScanNetworks() {
   }
 }
 
+// Function called by the WebServer in main.cpp to populate the avail able WiFi list
 String populateWebVars_WiFiList(const String& var){
   String s;
   s="";
