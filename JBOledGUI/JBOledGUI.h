@@ -34,15 +34,15 @@
 #define JBOLED_H
 #define JBOLED_VERSION "2021-03-10"
 #include <arduino.h>
-#include <Streaming.h>
+#include "Streaming.h"
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_I2CDevice.h>
 #include <Adafruit_GFX.h>
-#include "ssd1306.h"        // chercher la lib "ssd1306" par Alexey Dynda (ici la dernière version - 1.8.2) Attention: ne pas confondre avec lcdgfx du même auteur qui sort avec la requete "ssd1306"
-#include "nano_gfx.h"
-#include "JBUtils.h"
-#include "JBPitons.h"
+#include <ssd1306.h>        // chercher la lib "ssd1306" par Alexey Dynda (ici la dernière version - 1.8.2) Attention: ne pas confondre avec lcdgfx du même auteur qui sort avec la requete "ssd1306"
+#include <nano_gfx.h>
+#include <JBUtils.h>
+#include <JBPitons.h>
 
 
 // Note le OLED 1306 a une resolution de 128(horiz)  * 64(vert) pixels

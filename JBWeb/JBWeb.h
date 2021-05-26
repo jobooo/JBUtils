@@ -147,7 +147,7 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),jsp_FIRST,jst_STRING);
     s+=CreateJSONString("OPERATION","Success",jsp_LAST,jst_STRING);
     MySocket.broadcastTXT(s);
-    Serial lln s;
+    Serial lln s lln  WiFi.localIP();
     return true;
   }
   // Failed: broadcast the good news
