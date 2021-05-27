@@ -8,8 +8,8 @@
  *  ottowinter/AsyncTCP-esphome@^1.1.1
 	ottowinter/ESPAsyncWebServer-esphome@^1.2.7
  * *********************************************************/
-#ifndef JBWEBASYNCH_H
-#define JBWEBASYNCH_H
+#ifndef JBWEB_H
+#define JBWEB_H
 
 #include "SPIFFS.h"
 #include <WiFi.h>
