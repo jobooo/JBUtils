@@ -40,16 +40,27 @@ NetworkItem *NetList=nullptr;
 int numberOfNetworks=0;
 void ScanNetworks(void);
 int CompareNetworksPower (const void * a, const void * b);
+
 String populateWebVars_WiFiList(const String&  var);
-/*******************************************************/
+
+// HTML request handlers
+void htmlReq_TryThisWifi(AsyncWebServerRequest *req);
+void htmlReq_SelectWiFi(AsyncWebServerRequest *request);
+
+// web socket handler(s)
+void TryThisWiFi_html_wsHandler(char *JSON_data, uint8_t clientID=-1);
+
 
 /******************************************************
  * WiFi connection stuff
  * ****************************************************/
 String sTryThisSSID, sTryThisPW;
+bool flag_TryNewWiFi =false;
+
 void StartSoftAP(const char * SSIDName, char * PW=nullptr); // Used to start ESP32's local private WiFi provider
 bool flag_UserCanceled = false;  // If user cancels while tryin to log to a wifi router 
 bool ConnectToWiFi(const char *pSSID=nullptr, const char *pPW=nullptr, bool updateSocket=false);
+
 
 
 /****************************************
@@ -176,6 +187,44 @@ int CompareNetworksPower (const void * a, const void * b) {
    else
       return 0;
 }
+
+// HAndler for TryThisWifi.html file request
+void htmlReq_TryThisWifi(AsyncWebServerRequest *req) {
+  Serial lln "htmlReq_TryThisWifi A";
+  
+  AsyncWebParameter *awParam;
+  awParam = req->getParam("WiFiNets",true,false);
+  sTryThisSSID=awParam->value();
+  Serial lln "htmlReq_TryThisWifi says: " sp sTryThisSSID;
+  awParam = req->getParam("pwd",true,false);
+  sTryThisPW=awParam->value();
+  Serial << "PW: " sp sTryThisPW;
+
+  // Envoie une réponse HTML au caller
+  req->send(SPIFFS, "/TryThisWiFi.html", "text/html",false);
+}
+
+// HAndler for SelectWiFi.html file request
+void htmlReq_SelectWiFi(AsyncWebServerRequest *request) {
+  request->send(SPIFFS, "/SelectWiFi.html", "text/html", false, populateWebVars_WiFiList);
+}
+
+void TryThisWiFi_html_wsHandler(char *JSON_data, uint8_t clientID) {
+  if(GetJSONData("action",(char *)JSON_data)=="ReadyToMonitor"){
+      // Cette réponse attend des updates de status de tentative de login via le websocket. On envoi ici les valeurs de départ
+    String tmpJSON;
+    tmpJSON = CreateJSONString("WIFI_NAME",sTryThisSSID.c_str(),jsp_FIRST,jst_STRING);
+    tmpJSON += CreateJSONString("TIME_LEFT", String(WiFiLogInTimeOut/1000).c_str(),jsp_LAST,jst_NUMBER);
+    MySocket.sendTXT(clientID,tmpJSON);
+    
+    flag_TryNewWiFi=true;   //Je crois (pas vérifié) qu'on ne peut pas caller ConnectToWiFi() durant une gestion d'un evenement socket, on passe par un flag qui sera vu dans le loop() 
+  }
+  
+  if(GetJSONData("action",(char *)JSON_data)=="BT_CANCEL"){
+      flag_UserCanceled=true;
+  }
+}
+
 
 void ScanNetworks() {
   numberOfNetworks = WiFi.scanNetworks();
