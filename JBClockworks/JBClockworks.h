@@ -8,7 +8,10 @@
 #define Minutes *60*1000
 
 enum ClockResolution   {
-    H,M,S,ms
+    H,  // Hours
+    M,  // Minutes
+    S,  // Seconds
+    ms  // MilliSeconds
 };
 
 class JBCountDown {
@@ -88,17 +91,16 @@ public:
         if(Started){
             MillisLeft=NbCountDownMillis - (millis()-start_millis);
             if(MillisLeft <= 0){
-                Started=false;
                 MillisLeft=SecLeft=MinLeft=HoursLeft=0;
-                Started=false;
                 EndReached=true;
+                return false;
             }else{
                 SecLeft=MillisLeft/1000;
                 MinLeft=SecLeft/60;
                 HoursLeft=MinLeft/60;
             }
         }
-        return Started;
+        return true;
     }
 };
 
