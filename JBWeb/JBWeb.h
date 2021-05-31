@@ -34,9 +34,9 @@ WebSocketsServer MySocket(81);
 typedef struct {
   String NetName;     
   int dbPower;
-} NetworkItem;
+} NETWORK_ITEM_t;
 // a pointer to an array of network Items, 
-NetworkItem *NetList=nullptr; 
+NETWORK_ITEM_t *NetList=nullptr; 
 int numberOfNetworks=0;
 void ScanNetworks(void);
 int CompareNetworksPower (const void * a, const void * b);
@@ -177,8 +177,8 @@ void StartSoftAP(const char * SSIDName, char * PW){
 
 // qSort function to sort avail neworks by power, descending
 int CompareNetworksPower (const void * a, const void * b) {
-  NetworkItem *NetA = (NetworkItem *)a;
-  NetworkItem *NetB = (NetworkItem *)b;
+  NETWORK_ITEM_t *NetA = (NETWORK_ITEM_t *)a;
+  NETWORK_ITEM_t *NetB = (NETWORK_ITEM_t *)b;
 
   if (NetA->dbPower > NetB->dbPower)
       return -1;
@@ -235,14 +235,14 @@ void ScanNetworks() {
       Serial ln <<"Freeing Netlist array pointer!";
       free(NetList);
     }
-    NetList = (NetworkItem *) calloc(numberOfNetworks,sizeof(NetworkItem)); // Memory allocation for the NetList NetworkItem array. In some places, there can be too many networks. 
+    NetList = (NETWORK_ITEM_t *) calloc(numberOfNetworks,sizeof(NETWORK_ITEM_t)); // Memory allocation for the NetList NETWORK_ITEM_t array. In some places, there can be too many networks. 
     if(NetList!=nullptr){
       for (int i = 0; i < numberOfNetworks; i++) {
         NetList[i].NetName=WiFi.SSID(i);
         NetList[i].dbPower=WiFi.RSSI(i);
       }
       //sort by power
-      qsort (NetList, numberOfNetworks, sizeof(NetworkItem), CompareNetworksPower);
+      qsort (NetList, numberOfNetworks, sizeof(NETWORK_ITEM_t), CompareNetworksPower);
 
       for (int i = 0; i < numberOfNetworks; i++) {
         Serial ln << NetList[i].NetName << " " << NetList[i].dbPower;

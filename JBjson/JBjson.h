@@ -9,14 +9,14 @@ typedef enum  {
     jst_STRING,
     jst_NUMBER,
     jst_BOOL
-}JSON_DATATYPE;
+}JSON_DATATYPE_t;
 
 typedef enum  {
     jsp_FIRST,
     jsp_MIDDLE,
     jsp_LAST,
     jsp_SINGLE
-}JSON_DATA_POSITION;
+}JSON_DATA_POSITION_t;
  
 
 /* GetJSONData(const char *pKey,  char * InThis_JSON_Data)
@@ -54,7 +54,7 @@ exemple d'utilisation:
   Serial lln myTmps;
 
 **************************************************************/
-String GetJSONData(const char *pKey, const char * InThis_JSON_Data, JSON_DATATYPE dataType=jst_STRING){
+String GetJSONData(const char *pKey, const char * InThis_JSON_Data, JSON_DATATYPE_t dataType=jst_STRING){
     String s=InThis_JSON_Data;
     String r=String();
     int p1=0; int p2=0;
@@ -86,8 +86,8 @@ String GetJSONData(const char *pKey, const char * InThis_JSON_Data, JSON_DATATYP
 // dataType determine if "" are needed
 String CreateJSONString(const char *pKeyName, 
                         const char *pValue, 
-                        JSON_DATA_POSITION dataPosition=jsp_MIDDLE, 
-                        JSON_DATATYPE dataType=jst_STRING   
+                        JSON_DATA_POSITION_t dataPosition=jsp_MIDDLE, 
+                        JSON_DATATYPE_t dataType=jst_STRING   
                         )
 {
     String r=String();

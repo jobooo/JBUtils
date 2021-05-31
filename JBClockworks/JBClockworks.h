@@ -5,6 +5,11 @@
 #ifndef JBClockWorks_VERSION
 
 #define JBClockWorks_VERSION "2021-05-29"
+#define Minutes *60*1000
+
+enum ClockResolution   {
+    H,M,S,ms
+};
 
 class JBCountDown {
 private:
@@ -13,9 +18,14 @@ private:
 public:
     uint32_t MillisLeft, SecLeft, MinLeft, HoursLeft;
     bool Started=false;
+    bool EndReached=false;
+    ClockResolution Resolution=M;
 
-    JBCountDown(uint32_t nbSeconds){
+    uint32_t LastValue =0; 
+
+    JBCountDown(uint32_t nbSeconds, ClockResolution pRes=M){
         NbCountDownMillis=nbSeconds*1000;
+        Resolution=pRes;
         Reset();
     }
 
@@ -26,9 +36,10 @@ public:
         SecLeft=MillisLeft/1000;
         MinLeft=SecLeft/60;
         HoursLeft=MinLeft/60;
+        EndReached=false;
     }
 
-    bool Start(){
+    void Start(){
         Started=true;
         start_millis=millis();
         MillisLeft=NbCountDownMillis;
@@ -36,6 +47,40 @@ public:
 
     void Stop(){
         Started=false;
+    }
+
+    bool HasChanged(){
+        Update();
+        switch (Resolution){
+            case ms:
+                if(LastValue!=MillisLeft) {
+                    LastValue=MillisLeft;
+                    return true;
+                }
+            break;
+            case S:
+                if(LastValue!=SecLeft) {
+                    LastValue=SecLeft;
+                    return true;
+                }
+            break;
+            case M:
+                if(LastValue!=MinLeft) {
+                    LastValue=MinLeft;
+                    return true;
+                }
+            break;
+            case H:
+                if(LastValue!=HoursLeft) {
+                    LastValue=HoursLeft;
+                    return true;
+                }
+            break;
+            default:
+                return false;
+            break;
+        }
+        return false;
     }
 
     // Update() returns true if there is time left (it returns Started bool value).
@@ -46,6 +91,7 @@ public:
                 Started=false;
                 MillisLeft=SecLeft=MinLeft=HoursLeft=0;
                 Started=false;
+                EndReached=true;
             }else{
                 SecLeft=MillisLeft/1000;
                 MinLeft=SecLeft/60;
