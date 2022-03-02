@@ -178,6 +178,12 @@ class JBMinHrsSelector : public RotaryEncoderWithPushButton{
       Ecran=pEcran;
     }
 
+    /*************************************************
+      pLabel: label affiché au dessus de la valeur
+      pMinValue, pMaxValue: vals min & max
+      pValue, valeure par défaut
+      pIncrement: multiplicateur de MAxValue et MinValue (6*5=30, 96*5=8 heures)
+    ******************************/
     long Run(const char *pLabel=NULL, long pMinValue=0,long pMaxValue=96,long pValue=6, byte pIncrement=5){
 
           long Hours, Minutes;

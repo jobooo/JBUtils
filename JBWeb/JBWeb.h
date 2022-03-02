@@ -74,7 +74,7 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
   // Timers to wait for conection 
   long Waiting =0;
   long WaitStart=millis();
-  long LastCountownSent=0;
+  long LastCountDownSent=0;
   
   String sSSID, sPW;
 
@@ -93,7 +93,7 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
   if(updateSocket){
     // Populate JSON string with ssid & time left
     String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),jsp_FIRST,jst_STRING);
-    s+=CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_LAST,jst_NUMBER);
+    s+=CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountDownSent).c_str(),jsp_LAST,jst_NUMBER);
     MySocket.broadcastTXT(s);
     MySocket.loop();
     yield();
@@ -136,12 +136,12 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     yield(); // céder le processeur
 
     // Donner signe de vie environ 1 fois par seconde au client et sur le port serie.   
-    if((long)((Waiting-WaitStart)/1000) != LastCountownSent){
-      LastCountownSent=(long)((Waiting-WaitStart)/1000);
+    if((long)((Waiting-WaitStart)/1000) != LastCountDownSent){
+      LastCountDownSent=(long)((Waiting-WaitStart)/1000);
       Serial.print(".");
       
       if(updateSocket){ // if we must update WebSocket clients
-        String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_SINGLE,jst_NUMBER);
+        String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountDownSent).c_str(),jsp_SINGLE,jst_NUMBER);
         MySocket.broadcastTXT(s);
         MySocket.loop();
         yield();
@@ -201,23 +201,26 @@ void htmlReq_TryThisWifi(AsyncWebServerRequest *req) {
   Serial << "PW: " sp sTryThisPW;
 
   // Envoie une réponse HTML au caller
-  req->send(SPIFFS, "/TryThisWiFi.html", "text/html",false);
+  //FUCK SOCKETS req->send(SPIFFS, "/TryThisWiFi.html", "text/html",false);
+  req->send(SPIFFS, "/Refresh.html", "text/html",false);
+  flag_TryNewWiFi=true; //FUCK SOCKETS  cete commande est déménagé ici
 }
 
 // HAndler for SelectWiFi.html file request
 void htmlReq_SelectWiFi(AsyncWebServerRequest *request) {
   request->send(SPIFFS, "/SelectWiFi.html", "text/html", false, populateWebVars_WiFiList);
+  
 }
 
 void TryThisWiFi_html_wsHandler(char *JSON_data, uint8_t clientID) {
   if(GetJSONData("action",(char *)JSON_data)=="ReadyToMonitor"){
-      // Cette réponse attend des updates de status de tentative de login via le websocket. On envoi ici les valeurs de départ
+    // Cette réponse attend des updates de status de tentative de login via le websocket. On envoi ici les valeurs de départ
     String tmpJSON;
     tmpJSON = CreateJSONString("WIFI_NAME",sTryThisSSID.c_str(),jsp_FIRST,jst_STRING);
     tmpJSON += CreateJSONString("TIME_LEFT", String(WiFiLogInTimeOut/1000).c_str(),jsp_LAST,jst_NUMBER);
-    MySocket.sendTXT(clientID,tmpJSON);
     
-    flag_TryNewWiFi=true;   //Je crois (pas vérifié) qu'on ne peut pas caller ConnectToWiFi() durant une gestion d'un evenement socket, on passe par un flag qui sera vu dans le loop() 
+    //FUCK SOCKETSMySocket.sendTXT(clientID,tmpJSON);
+    //FUCK SOCKETS    flag_TryNewWiFi=true;   //Je crois (pas vérifié) qu'on ne peut pas caller ConnectToWiFi() durant une gestion d'un evenement socket, on passe par un flag qui sera vu dans le loop() 
   }
   
   if(GetJSONData("action",(char *)JSON_data)=="BT_CANCEL"){
@@ -251,7 +254,7 @@ void ScanNetworks() {
   }
 }
 
-// Function called by the WebServer in main.cpp to populate the avail able WiFi list
+// Function called by the WebServer in main.cpp to populate the available WiFi list
 String populateWebVars_WiFiList(const String& var){
   String s;
   s="";
@@ -271,4 +274,7 @@ String populateWebVars_WiFiList(const String& var){
   }
   return s;
 }
+
+
+
 #endif

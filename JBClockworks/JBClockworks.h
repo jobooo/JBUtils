@@ -5,7 +5,7 @@
 #ifndef JBClockWorks_VERSION
 
 #define JBClockWorks_VERSION "2021-05-29"
-#define Minutes *60*1000
+#define Minutes *60
 
 enum ClockResolution   {
     H,  // Hours
@@ -46,6 +46,16 @@ public:
         Started=true;
         start_millis=millis();
         MillisLeft=NbCountDownMillis;
+    }
+    void Restart(){
+        Reset();    
+        Start();
+    }
+    void SetNewValues(uint32_t nbSeconds, ClockResolution pRes=M){
+        Stop();
+        NbCountDownMillis=nbSeconds*1000;
+        Resolution=pRes;
+        Reset();    
     }
 
     void Stop(){
