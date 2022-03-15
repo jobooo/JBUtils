@@ -25,23 +25,27 @@
 
 /* The SMTP Session object used for Email sending */
 SMTPSession smtp;
-
-bool SendEmail(String sToAddress, String sToName, String sMsg){
-    smtp.debug(1);
-
-  ESP_Mail_Session session;
-
-  /* Set the session config */
+ESP_Mail_Session session;
+bool OpenEmailSession(void){
+  smtp.debug(1);
   session.server.host_name = SMTP_HOST;
   session.server.port = SMTP_PORT;
-
   session.login.email = AUTHOR_EMAIL;
   session.login.password = AUTHOR_PASSWORD;
   session.login.user_domain = "";
+  /* Connect to server with the session config */
+  return smtp.connect(&session);
+}
+void CloseEmailSession(void){
+  smtp.closeSession();
+}
 
+bool SendEmail(String sToAddress, String sToName, String sMsg){
+  
+  
   /* Declare the message class */
   SMTP_Message message;
-
+  
   /* Set the message headers */
   message.sender.name = "Sentinelle de rond de poele";
   message.sender.email = AUTHOR_EMAIL;
@@ -56,15 +60,14 @@ bool SendEmail(String sToAddress, String sToName, String sMsg){
   message.priority = esp_mail_smtp_priority::esp_mail_smtp_priority_low;
   message.response.notify = esp_mail_smtp_notify_success | esp_mail_smtp_notify_failure | esp_mail_smtp_notify_delay;
 
-  /* Connect to server with the session config */
-  if (!smtp.connect(&session))
-    return false;
+ 
 
   /* Start sending Email and close the session */
   if (!MailClient.sendMail(&smtp, &message)){
     Serial.println("Error sending Email, " + smtp.errorReason());
     return false;
   }
+  
   return true;
 }
 
