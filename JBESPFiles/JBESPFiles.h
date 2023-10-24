@@ -9,7 +9,7 @@
 #include "SPIFFS.h"
 #ifndef JBESPFiles_VERSION
 
-#define JBESPFiles_VERSION "2021-04-01ab"
+#define JBESPFiles_VERSION "2021-04-01"
 
 String ReadLineToString(File f);
 String ReadFileToString(String sFile2Read);

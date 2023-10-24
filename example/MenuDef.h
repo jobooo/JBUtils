@@ -8,7 +8,7 @@
 #include "JBOledGUI.h"
 
 // ************ DÉFINITION D'UN MENU: DÉBUT *********************
-#define MainMenuNbItems 5  // Combien d'items dans ce menu
+#define MainMenuNbItems 6  // Combien d'items dans ce menu
 
 // Textes de chaque Item:
 const char *MainMenuTitles[MainMenuNbItems] = {
@@ -16,8 +16,9 @@ const char *MainMenuTitles[MainMenuNbItems] = {
     
     " MIN. CUISSON",
     " QUI CUISINE?",
-    " WiFi        ",
-    " BYE         ",
+    " TEST TEXTO  ",
+    " WIFI INFO   ",
+    " RETOUR      ",
     " RESET       "
 };
 
@@ -39,7 +40,7 @@ const char *QuiMenuTitles[QuiMenuNbItems] = {
     " MOMIE       ",
     " CLEMOUE     ",
     " LION        ",
-    " BYE BYE la  "
+    " RETOUR      "
 };
 
 FunctionPointer QuiMenuFunctions[QuiMenuNbItems]; // Tableau des pointeurs sur les fonction à éxécuter si un item est sélectionné. (NULL si c'est un sous menu ou "EXit"

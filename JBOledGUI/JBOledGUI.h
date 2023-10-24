@@ -178,6 +178,12 @@ class JBMinHrsSelector : public RotaryEncoderWithPushButton{
       Ecran=pEcran;
     }
 
+    /*************************************************
+      pLabel: label affiché au dessus de la valeur
+      pMinValue, pMaxValue: vals min & max
+      pValue, valeure par défaut
+      pIncrement: multiplicateur de MAxValue et MinValue (6*5=30, 96*5=8 heures)
+    ******************************/
     long Run(const char *pLabel=NULL, long pMinValue=0,long pMaxValue=96,long pValue=6, byte pIncrement=5){
 
           long Hours, Minutes;
@@ -224,7 +230,7 @@ class JBMenu{
     bool inited=false;
   public:
     RotaryEncoderWithPushButton *Rot=NULL;
-    SAppMenu AppMenu;
+    SAppMenu AppMenu;   // Le menu de base est fournit par la lib gratuite "ssd1306"
 
     bool MenuCirculaire=false; // Mettre à TRUE pour que le menu saute au début s'il arrive à la fin et vice versa
 
@@ -297,7 +303,7 @@ class JBMenu{
            * ça permet de remonter d'un nombre de niveau spécifique
            */
 
-          if(SubMenus[AppMenu.selection]!=NULL){
+          if(SubMenus[AppMenu.selection]!=NULL){ // Si l'item est un sous-menu
             int smretval=0;
 
             smretval=SubMenus[AppMenu.selection]->Run(); // Run le sous-menu -- ici on devient récursif! /
@@ -318,10 +324,10 @@ class JBMenu{
                                     // Si le nombre est plus grand que le nombre de sou-menus impliqués, c'Est l'équivalent de retourner -1
                 break;
             }
-          }else {
-            if(Functions[AppMenu.selection]!=NULL)
+          }else {     // ce n'est pas un sous-menu
+            if(Functions[AppMenu.selection]!=NULL) // Si le pointeur sur la fonction à éxécuter n'es pas NULL
               retval = (*Functions[AppMenu.selection])(); // Appelle la fonction enregistrée pour cet item de menu
-            else // if function pointer is NULL, return to preceding level.
+            else // if function pointer is NULL, return to preceding level. En principe, ça ne peut pas arriver sauf erreur de programmation
               return 0;
 
             switch (retval){

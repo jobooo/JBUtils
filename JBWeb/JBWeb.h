@@ -34,22 +34,33 @@ WebSocketsServer MySocket(81);
 typedef struct {
   String NetName;     
   int dbPower;
-} NetworkItem;
+} NETWORK_ITEM_t;
 // a pointer to an array of network Items, 
-NetworkItem *NetList=nullptr; 
+NETWORK_ITEM_t *NetList=nullptr; 
 int numberOfNetworks=0;
 void ScanNetworks(void);
 int CompareNetworksPower (const void * a, const void * b);
+
 String populateWebVars_WiFiList(const String&  var);
-/*******************************************************/
+
+// HTML request handlers
+void htmlReq_TryThisWifi(AsyncWebServerRequest *req);
+void htmlReq_SelectWiFi(AsyncWebServerRequest *request);
+
+// web socket handler(s)
+void TryThisWiFi_html_wsHandler(char *JSON_data, uint8_t clientID=-1);
+
 
 /******************************************************
  * WiFi connection stuff
  * ****************************************************/
 String sTryThisSSID, sTryThisPW;
+bool flag_TryNewWiFi =false;
+
 void StartSoftAP(const char * SSIDName, char * PW=nullptr); // Used to start ESP32's local private WiFi provider
 bool flag_UserCanceled = false;  // If user cancels while tryin to log to a wifi router 
 bool ConnectToWiFi(const char *pSSID=nullptr, const char *pPW=nullptr, bool updateSocket=false);
+
 
 
 /****************************************
@@ -63,7 +74,7 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
   // Timers to wait for conection 
   long Waiting =0;
   long WaitStart=millis();
-  long LastCountownSent=0;
+  long LastCountDownSent=0;
   
   String sSSID, sPW;
 
@@ -82,7 +93,7 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
   if(updateSocket){
     // Populate JSON string with ssid & time left
     String s=CreateJSONString("WIFI_NAME",sSSID.c_str(),jsp_FIRST,jst_STRING);
-    s+=CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_LAST,jst_NUMBER);
+    s+=CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountDownSent).c_str(),jsp_LAST,jst_NUMBER);
     MySocket.broadcastTXT(s);
     MySocket.loop();
     yield();
@@ -125,12 +136,12 @@ bool ConnectToWiFi(const char *pSSID, const char *pPW, bool updateSocket) {
     yield(); // céder le processeur
 
     // Donner signe de vie environ 1 fois par seconde au client et sur le port serie.   
-    if((long)((Waiting-WaitStart)/1000) != LastCountownSent){
-      LastCountownSent=(long)((Waiting-WaitStart)/1000);
+    if((long)((Waiting-WaitStart)/1000) != LastCountDownSent){
+      LastCountDownSent=(long)((Waiting-WaitStart)/1000);
       Serial.print(".");
       
       if(updateSocket){ // if we must update WebSocket clients
-        String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountownSent).c_str(),jsp_SINGLE,jst_NUMBER);
+        String s =CreateJSONString("TIME_LEFT",String((WiFiLogInTimeOut/1000)-LastCountDownSent).c_str(),jsp_SINGLE,jst_NUMBER);
         MySocket.broadcastTXT(s);
         MySocket.loop();
         yield();
@@ -166,8 +177,8 @@ void StartSoftAP(const char * SSIDName, char * PW){
 
 // qSort function to sort avail neworks by power, descending
 int CompareNetworksPower (const void * a, const void * b) {
-  NetworkItem *NetA = (NetworkItem *)a;
-  NetworkItem *NetB = (NetworkItem *)b;
+  NETWORK_ITEM_t *NetA = (NETWORK_ITEM_t *)a;
+  NETWORK_ITEM_t *NetB = (NETWORK_ITEM_t *)b;
 
   if (NetA->dbPower > NetB->dbPower)
       return -1;
@@ -176,6 +187,47 @@ int CompareNetworksPower (const void * a, const void * b) {
    else
       return 0;
 }
+
+// HAndler for TryThisWifi.html file request
+void htmlReq_TryThisWifi(AsyncWebServerRequest *req) {
+  Serial lln "htmlReq_TryThisWifi A";
+  
+  AsyncWebParameter *awParam;
+  awParam = req->getParam("WiFiNets",true,false);
+  sTryThisSSID=awParam->value();
+  Serial lln "htmlReq_TryThisWifi says: " sp sTryThisSSID;
+  awParam = req->getParam("pwd",true,false);
+  sTryThisPW=awParam->value();
+  Serial << "PW: " sp sTryThisPW;
+
+  // Envoie une réponse HTML au caller
+  //FUCK SOCKETS req->send(SPIFFS, "/TryThisWiFi.html", "text/html",false);
+  req->send(SPIFFS, "/Refresh.html", "text/html",false);
+  flag_TryNewWiFi=true; //FUCK SOCKETS  cete commande est déménagé ici
+}
+
+// HAndler for SelectWiFi.html file request
+void htmlReq_SelectWiFi(AsyncWebServerRequest *request) {
+  request->send(SPIFFS, "/SelectWiFi.html", "text/html", false, populateWebVars_WiFiList);
+  
+}
+
+void TryThisWiFi_html_wsHandler(char *JSON_data, uint8_t clientID) {
+  if(GetJSONData("action",(char *)JSON_data)=="ReadyToMonitor"){
+    // Cette réponse attend des updates de status de tentative de login via le websocket. On envoi ici les valeurs de départ
+    String tmpJSON;
+    tmpJSON = CreateJSONString("WIFI_NAME",sTryThisSSID.c_str(),jsp_FIRST,jst_STRING);
+    tmpJSON += CreateJSONString("TIME_LEFT", String(WiFiLogInTimeOut/1000).c_str(),jsp_LAST,jst_NUMBER);
+    
+    //FUCK SOCKETSMySocket.sendTXT(clientID,tmpJSON);
+    //FUCK SOCKETS    flag_TryNewWiFi=true;   //Je crois (pas vérifié) qu'on ne peut pas caller ConnectToWiFi() durant une gestion d'un evenement socket, on passe par un flag qui sera vu dans le loop() 
+  }
+  
+  if(GetJSONData("action",(char *)JSON_data)=="BT_CANCEL"){
+      flag_UserCanceled=true;
+  }
+}
+
 
 void ScanNetworks() {
   numberOfNetworks = WiFi.scanNetworks();
@@ -186,14 +238,14 @@ void ScanNetworks() {
       Serial ln <<"Freeing Netlist array pointer!";
       free(NetList);
     }
-    NetList = (NetworkItem *) calloc(numberOfNetworks,sizeof(NetworkItem)); // Memory allocation for the NetList NetworkItem array. In some places, there can be too many networks. 
+    NetList = (NETWORK_ITEM_t *) calloc(numberOfNetworks,sizeof(NETWORK_ITEM_t)); // Memory allocation for the NetList NETWORK_ITEM_t array. In some places, there can be too many networks. 
     if(NetList!=nullptr){
       for (int i = 0; i < numberOfNetworks; i++) {
         NetList[i].NetName=WiFi.SSID(i);
         NetList[i].dbPower=WiFi.RSSI(i);
       }
       //sort by power
-      qsort (NetList, numberOfNetworks, sizeof(NetworkItem), CompareNetworksPower);
+      qsort (NetList, numberOfNetworks, sizeof(NETWORK_ITEM_t), CompareNetworksPower);
 
       for (int i = 0; i < numberOfNetworks; i++) {
         Serial ln << NetList[i].NetName << " " << NetList[i].dbPower;
@@ -202,7 +254,7 @@ void ScanNetworks() {
   }
 }
 
-// Function called by the WebServer in main.cpp to populate the avail able WiFi list
+// Function called by the WebServer in main.cpp to populate the available WiFi list
 String populateWebVars_WiFiList(const String& var){
   String s;
   s="";
@@ -222,4 +274,7 @@ String populateWebVars_WiFiList(const String& var){
   }
   return s;
 }
+
+
+
 #endif
